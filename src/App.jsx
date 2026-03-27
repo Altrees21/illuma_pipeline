@@ -6,6 +6,8 @@ const TEAM      = ['Alby', 'Dan', 'Alyssa', 'Logan']
 const STAGES    = ['Prospecting', 'Qualified', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost']
 const VERTICALS = ['Agency / Trading Desk', 'Pharma', 'Political', 'Brand Direct', 'Other']
 const USER_KEY  = 'illuma-user'
+const AUTH_KEY  = 'illuma-auth'
+const PASSWORD  = import.meta.env.VITE_APP_PASSWORD || 'illuma2026'
 
 const SM = {
   'Prospecting': { dot: '#94A3B8', bg: '#F1F5F9', text: '#475569' },
@@ -52,6 +54,9 @@ const css = `
 export default function App() {
   const [deals,    setDeals]    = useState([])
   const [acts,     setActs]     = useState([])
+  const [authed,   setAuthed]   = useState(() => localStorage.getItem(AUTH_KEY) === PASSWORD)
+  const [pwInput,  setPwInput]  = useState('')
+  const [pwError,  setPwError]  = useState(false)
   const [user,     setUser]     = useState(() => localStorage.getItem(USER_KEY))
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(null)
@@ -238,6 +243,50 @@ export default function App() {
   }
 
   const panelOpen = !!(sel && form)
+
+  // ── Password gate ──────────────────────────────────────────────
+  if (!authed) return (
+    <div style={{ minHeight: 360, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
+      <style>{css}</style>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 22, fontWeight: 500, marginBottom: 6 }}>Illuma Pipeline</div>
+        <div style={{ fontSize: 13, color: '#888' }}>Enter the team password to continue</div>
+      </div>
+      <div style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <input
+          className="inp"
+          type="password"
+          placeholder="Password"
+          value={pwInput}
+          autoFocus
+          onChange={e => { setPwInput(e.target.value); setPwError(false) }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              if (pwInput === PASSWORD) {
+                localStorage.setItem(AUTH_KEY, PASSWORD)
+                setAuthed(true)
+              } else {
+                setPwError(true)
+                setPwInput('')
+              }
+            }
+          }}
+          style={{ fontSize: 15, padding: '10px 12px', borderColor: pwError ? '#F43F5E' : '#D4D0C8' }}
+        />
+        {pwError && <div style={{ fontSize: 12, color: '#E24B4A', textAlign: 'center' }}>Incorrect password. Try again.</div>}
+        <button className="btn p" style={{ padding: '10px', fontSize: 14 }} onClick={() => {
+          if (pwInput === PASSWORD) {
+            localStorage.setItem(AUTH_KEY, PASSWORD)
+            setAuthed(true)
+          } else {
+            setPwError(true)
+            setPwInput('')
+          }
+        }}>Enter</button>
+      </div>
+      <div style={{ fontSize: 11, color: '#bbb' }}>Ask Alby for the password</div>
+    </div>
+  )
 
   // ── User picker ────────────────────────────────────────────────
   if (!user) return (
