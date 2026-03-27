@@ -7,7 +7,7 @@ const STAGES    = ['Prospecting', 'Qualified', 'Proposal', 'Negotiation', 'Close
 const VERTICALS = ['Agency / Trading Desk', 'Pharma', 'Political', 'Brand Direct', 'Other']
 const USER_KEY  = 'illuma-user'
 const AUTH_KEY  = 'illuma-auth'
-const PASSWORD  = import.meta.env.VITE_APP_PASSWORD || '50Mill!!'
+const PASSWORD  = import.meta.env.VITE_APP_PASSWORD || 'illuma2026'
 
 const SM = {
   'Prospecting': { dot: '#94A3B8', bg: '#F1F5F9', text: '#475569' },
@@ -27,7 +27,7 @@ const uid     = () => crypto.randomUUID()
 const ini     = (n) => (n || '?').slice(0, 2).toUpperCase()
 
 // ── Blank deal template ────────────────────────────────────────────────────
-const BLANK = { company: '', contact: '', vertical: 'Agency / Trading Desk', stage: 'Prospecting', value: '', close_date: '', notes: '', owner: 'Alby' }
+const BLANK = { company: '', contact: '', vertical: 'Agency / Trading Desk', stage: 'Prospecting', value: '', close_date: '', flight_start: '', flight_end: '', notes: '', owner: 'Alby' }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 const css = `
@@ -529,6 +529,14 @@ export default function App() {
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label className="fl">Close date</label>
                     <input className="inp" type="date" value={form.close_date || ''} onChange={e => setForm(f => ({ ...f, close_date: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="fl">Flight start <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: '#bbb' }}>(optional)</span></label>
+                    <input className="inp" type="date" value={form.flight_start || ''} onChange={e => setForm(f => ({ ...f, flight_start: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="fl">Flight end <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: '#bbb' }}>(optional)</span></label>
+                    <input className="inp" type="date" value={form.flight_end || ''} onChange={e => setForm(f => ({ ...f, flight_end: e.target.value }))} />
                   </div>
                 </div>
 
