@@ -7,7 +7,7 @@ const STAGES    = ['Prospecting', 'Qualified', 'Proposal', 'Negotiation', 'Close
 const VERTICALS = ['Agency / Trading Desk', 'Pharma', 'Political', 'Brand Direct', 'Other']
 const USER_KEY  = 'illuma-user'
 const AUTH_KEY  = 'illuma-auth'
-const PASSWORD  = import.meta.env.VITE_APP_PASSWORD || 'illuma2026'
+const PASSWORD  = import.meta.env.VITE_APP_PASSWORD || '50Mill!!'
 
 const SM = {
   'Prospecting': { dot: '#94A3B8', bg: '#F1F5F9', text: '#475569' },
