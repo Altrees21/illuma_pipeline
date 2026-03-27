@@ -342,50 +342,57 @@ export default function App() {
       {/* Split layout */}
       <div style={{display:'grid',gridTemplateColumns:panelOpen?'minmax(0,1fr) 390px':'minmax(0,1fr)',gap:12,alignItems:'start'}}>
 
-        {/* LIST */}
+        {/* LIST — wide scrollable */}
         {view==='list' && (
-          <div style={{border:'1px solid #E2DED5',borderRadius:10,overflow:'hidden',background:'#fff'}}>
-            <table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
+          <div style={{border:'1px solid #E2DED5',borderRadius:10,overflowX:'auto',background:'#fff'}}>
+            <table style={{borderCollapse:'collapse',tableLayout:'auto',minWidth:1200}}>
               <thead>
                 <tr style={{background:'#F3F1EC',fontSize:10,color:'#888',textTransform:'uppercase',letterSpacing:'0.07em'}}>
-                  <th style={{padding:'9px 12px',textAlign:'left',width:'16%',fontWeight:500}}>Agency</th>
-                  <th style={{padding:'9px 12px',textAlign:'left',width:'16%',fontWeight:500}}>Brand</th>
-                  {!panelOpen && <th style={{padding:'9px 12px',textAlign:'left',width:'15%',fontWeight:500}}>Campaign</th>}
-                  <th style={{padding:'9px 12px',textAlign:'left',width:panelOpen?'24%':'17%',fontWeight:500}}>Stage</th>
-                  <th style={{padding:'9px 12px',textAlign:'left',width:'12%',fontWeight:500}}>CS</th>
-                  {!panelOpen && <th style={{padding:'9px 12px',textAlign:'left',width:'10%',fontWeight:500}}>Sales</th>}
-                  <th style={{padding:'9px 12px',textAlign:'right',width:'11%',fontWeight:500}}>Value</th>
-                  {!panelOpen && <th style={{padding:'9px 12px',textAlign:'right',fontWeight:500}}>Close</th>}
+                  {[
+                    {label:'Brand',w:130},{label:'Campaign',w:160},{label:'Stage',w:130},
+                    {label:'CS',w:90},{label:'Sales',w:90},
+                    {label:'DSP',w:80},{label:'SSP',w:110},{label:'Product',w:120},{label:'Media',w:80},
+                    {label:'Value',w:90,right:true},{label:'Flight start',w:105,right:true},{label:'Flight end',w:105,right:true},
+                  ].map(({label,w,right})=>(
+                    <th key={label} style={{padding:'9px 12px',textAlign:right?'right':'left',minWidth:w,fontWeight:500,whiteSpace:'nowrap'}}>{label}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((deal,i)=>(
                   <tr key={deal.id} className="rh" onClick={()=>openDeal(deal)}
                     style={{borderTop:i>0?'1px solid #F0EDE6':'none',background:sel===deal.id?'#F3F1EC':'transparent'}}>
-                    <td style={{padding:'9px 12px',fontSize:12,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{deal.company||'—'}</td>
-                    <td style={{padding:'9px 12px'}}>
-                      <div style={{fontSize:12,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{deal.brand||'—'}</div>
-                      {!panelOpen && <div style={{fontSize:10,color:'#888'}}>{deal.vertical}</div>}
+                    <td style={{padding:'9px 12px',minWidth:130}}>
+                      <div style={{fontSize:12,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{deal.brand||'—'}</div>
+                      <div style={{fontSize:10,color:'#888',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{deal.company}</div>
                     </td>
-                    {!panelOpen && <td style={{padding:'9px 12px',fontSize:11,color:'#555',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{deal.campaign||'—'}</td>}
-                    <td style={{padding:'9px 12px'}}><Pill stage={deal.stage}/></td>
-                    <td style={{padding:'9px 12px'}}>
+                    <td style={{padding:'9px 12px',fontSize:11,color:'#555',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:160,minWidth:160}}>{deal.campaign||'—'}</td>
+                    <td style={{padding:'9px 12px',minWidth:130}}><Pill stage={deal.stage}/></td>
+                    <td style={{padding:'9px 12px',minWidth:90}}>
                       <div style={{display:'flex',alignItems:'center',gap:4}}>
-                        <Avatar name={deal.owner} size={20}/>
-                        {!panelOpen && <span style={{fontSize:11}}>{deal.owner}</span>}
+                        <Avatar name={deal.owner} size={18}/>
+                        <span style={{fontSize:11}}>{deal.owner}</span>
                       </div>
                     </td>
-                    {!panelOpen && <td style={{padding:'9px 12px'}}>
-                      <div style={{display:'flex',alignItems:'center',gap:4}}>
-                        {deal.sales_owner && <Avatar name={deal.sales_owner} size={20}/>}
-                        <span style={{fontSize:11}}>{deal.sales_owner||'—'}</span>
-                      </div>
-                    </td>}
-                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:500}}>{money(deal.value)}</td>
-                    {!panelOpen && <td style={{padding:'9px 12px',textAlign:'right',fontSize:11,color:'#888'}}>{fmtDate(deal.close_date)}</td>}
+                    <td style={{padding:'9px 12px',minWidth:90}}>
+                      {deal.sales_owner
+                        ? <div style={{display:'flex',alignItems:'center',gap:4}}><Avatar name={deal.sales_owner} size={18}/><span style={{fontSize:11}}>{deal.sales_owner}</span></div>
+                        : <span style={{fontSize:11,color:'#ccc'}}>—</span>}
+                    </td>
+                    <td style={{padding:'9px 12px',fontSize:11,color:'#555',whiteSpace:'nowrap',minWidth:80}}>{deal.dsp||'—'}</td>
+                    <td style={{padding:'9px 12px',fontSize:11,color:'#555',whiteSpace:'nowrap',minWidth:110}}>{deal.ssp||'—'}</td>
+                    <td style={{padding:'9px 12px',fontSize:11,color:'#555',whiteSpace:'nowrap',minWidth:120}}>{deal.product||'—'}</td>
+                    <td style={{padding:'9px 12px',minWidth:80}}>
+                      {deal.media_type
+                        ? <span style={{fontSize:10,background:'#F1F5F9',color:'#475569',padding:'2px 7px',borderRadius:10,fontWeight:500,whiteSpace:'nowrap'}}>{deal.media_type}</span>
+                        : <span style={{fontSize:11,color:'#ccc'}}>—</span>}
+                    </td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:500,whiteSpace:'nowrap',minWidth:90}}>{money(deal.value)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontSize:11,color:'#888',whiteSpace:'nowrap',minWidth:105}}>{fmtDate(deal.flight_start)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontSize:11,color:'#888',whiteSpace:'nowrap',minWidth:105}}>{fmtDate(deal.flight_end)}</td>
                   </tr>
                 ))}
-                {filtered.length===0 && <tr><td colSpan={8} style={{padding:'32px',textAlign:'center',color:'#aaa',fontSize:13}}>No results</td></tr>}
+                {filtered.length===0 && <tr><td colSpan={12} style={{padding:'32px',textAlign:'center',color:'#aaa',fontSize:13}}>No results</td></tr>}
               </tbody>
             </table>
           </div>
