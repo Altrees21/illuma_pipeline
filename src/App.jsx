@@ -21,6 +21,23 @@ const SM = {
 }
 const OC = { Alby: '#6366F1', Dan: '#0EA5E9', Alyssa: '#EC4899', Logan: '#14B8A6' }
 
+// These must live OUTSIDE App — if defined inside, React remounts them on every
+// keystroke which kills input focus.
+const Avatar = ({name, size=24}) => (
+  <div style={{width:size,height:size,borderRadius:'50%',background:OC[name]||'#888',display:'flex',alignItems:'center',justifyContent:'center',fontSize:Math.round(size*.38),fontWeight:500,color:'white',flexShrink:0,userSelect:'none'}}>
+    {(name||'?').slice(0,2).toUpperCase()}
+  </div>
+)
+const Pill = ({stage}) => {
+  const m = SM[stage]||{}
+  return <span className="tag" style={{background:m.bg,color:m.text}}><span style={{width:5,height:5,borderRadius:'50%',background:m.dot,display:'inline-block',flexShrink:0}}/>{stage}</span>
+}
+const F = ({label, children, span}) => (
+  <div style={{gridColumn:span?'1 / -1':undefined}}>
+    <label className="fl">{label}</label>{children}
+  </div>
+)
+
 const money   = (n) => '$' + Math.round(Number(n) || 0).toLocaleString()
 const fmtDate = (d) => d ? new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}) : '—'
 const fmtTS   = (t) => new Date(t).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
@@ -191,20 +208,6 @@ export default function App() {
     acts.filter(a => a.deal_id === sel).sort((a,b) => new Date(b.created_at)-new Date(a.created_at))
   ,[acts,sel])
 
-  const Avatar = ({name,size=24}) => (
-    <div style={{width:size,height:size,borderRadius:'50%',background:OC[name]||'#888',display:'flex',alignItems:'center',justifyContent:'center',fontSize:Math.round(size*.38),fontWeight:500,color:'white',flexShrink:0,userSelect:'none'}}>
-      {ini(name)}
-    </div>
-  )
-  const Pill = ({stage}) => {
-    const m = SM[stage]||{}
-    return <span className="tag" style={{background:m.bg,color:m.text}}><span style={{width:5,height:5,borderRadius:'50%',background:m.dot,display:'inline-block',flexShrink:0}}/>{stage}</span>
-  }
-  const F = ({label,children,span}) => (
-    <div style={{gridColumn:span?'1 / -1':undefined}}>
-      <label className="fl">{label}</label>{children}
-    </div>
-  )
   const inp  = (key, placeholder, type='text') =>
     <input className="inp" type={type} placeholder={placeholder} value={form[key]||''} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} />
   const sel_ = (key, opts, blank) =>
