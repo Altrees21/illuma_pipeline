@@ -4,7 +4,7 @@ import { supabase } from './supabase.js'
 // ── Constants ──────────────────────────────────────────────────────────────
 const TEAM      = ['Alby', 'Dan', 'Alyssa', 'Logan']
 const STAGES    = ['Prospecting', 'Qualified', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost']
-const VERTICALS = ['Agency / Trading Desk', 'Pharma', 'Political', 'Brand Direct', 'Other']
+const VERTICALS = ['Agency / Trading Desk', 'Pharma', 'Political', 'Brand Direct', 'CPG', 'Tech', 'Finance', 'Travel', 'Entertainment', 'Other']
 const USER_KEY  = 'illuma-user'
 const AUTH_KEY  = 'illuma-auth'
 const PASSWORD  = import.meta.env.VITE_APP_PASSWORD || 'illuma2026'
