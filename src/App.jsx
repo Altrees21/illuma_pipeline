@@ -92,6 +92,11 @@ export default function App() {
   const [fVert,   setFVert]   = useState('All')
   const [fQ,      setFQ]      = useState('')
   const [sortBy,  setSortBy]  = useState('close_date')
+  const [tab,     setTab]     = useState('pipeline')  // 'pipeline' | 'revenue'
+  const [revenue, setRevenue] = useState([])
+  const [revLoading, setRevLoading] = useState(false)
+  const [revFilter, setRevFilter] = useState('')
+  const [revSort,   setRevSort]   = useState('ytd')   // 'ytd' | 'name' | 'recent'
 
   const loadAll = useCallback(async () => {
     try {
@@ -117,6 +122,23 @@ export default function App() {
     const as = supabase.channel('acts-ch').on('postgres_changes',{event:'*',schema:'public',table:'activity'},loadAll).subscribe()
     return () => { supabase.removeChannel(ds); supabase.removeChannel(as) }
   }, [loadAll])
+
+  const loadRevenue = useCallback(async () => {
+    setRevLoading(true)
+    try {
+      const { data, error: e } = await supabase
+        .from('revenue')
+        .select('date, advertiser, revenue')
+        .order('date', { ascending: true })
+      if (e) throw e
+      setRevenue(data || [])
+    } catch(e) { console.error(e) }
+    finally { setRevLoading(false) }
+  }, [])
+
+  useEffect(() => {
+    if (tab === 'revenue' && revenue.length === 0) loadRevenue()
+  }, [tab, loadRevenue])
 
   const chooseUser = (name) => { localStorage.setItem(USER_KEY, name); setUser(name) }
   const log = async (dealId, type, text) =>
@@ -276,14 +298,20 @@ export default function App() {
       <style>{css}</style>
 
       {/* Header */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
-        <div>
-          <div style={{fontSize:18,fontWeight:500}}>Illuma Pipeline</div>
-          <div style={{fontSize:11,color:'#888',marginTop:2}}>{metrics.cnt} active · live sync</div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
+        <div style={{display:'flex',alignItems:'center',gap:16}}>
+          <div style={{fontSize:18,fontWeight:500}}>Illuma</div>
+          <div style={{display:'flex',background:'#EDEBE6',borderRadius:8,padding:2}}>
+            {[['pipeline','Pipeline'],['revenue','Revenue']].map(([t,label])=>(
+              <button key={t} onClick={()=>setTab(t)}
+                style={{padding:'4px 16px',borderRadius:6,border:'none',background:tab===t?'#fff':'transparent',cursor:'pointer',fontSize:12,fontWeight:tab===t?500:400,fontFamily:'inherit',color:'#1A1A1A',boxShadow:tab===t?'0 0 0 1px #D4D0C8':'none'}}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap'}}>
-          <button className="btn" onClick={exportCSV} style={{fontSize:11}}>Export CSV</button>
-          <button className="btn p" onClick={openNew}>+ New deal</button>
+          {tab==='pipeline' && <><button className="btn" onClick={exportCSV} style={{fontSize:11}}>Export CSV</button><button className="btn p" onClick={openNew}>+ New deal</button></>}
           <div style={{display:'flex',alignItems:'center',gap:6,padding:'3px 10px 3px 6px',border:'1px solid #D4D0C8',borderRadius:20,background:'#fff'}}>
             <Avatar name={user} size={22}/>
             <select value={user} onChange={e=>chooseUser(e.target.value)}
@@ -529,6 +557,174 @@ export default function App() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ── REVENUE TAB ── */}
+      {tab==='revenue' && <RevenueDashboard revenue={revenue} loading={revLoading} filter={revFilter} setFilter={setRevFilter} sort={revSort} setSort={setRevSort} />}
+    </div>
+  )
+}
+
+// ── Revenue Dashboard ──────────────────────────────────────────────────────
+function RevenueDashboard({ revenue, loading, filter, setFilter, sort, setSort }) {
+  const money = (n) => '$' + Math.round(Number(n)||0).toLocaleString()
+  const fmt2  = (n) => '$' + Number(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
+  const ytdByAdv = useMemo(() => {
+    const m = {}
+    revenue.forEach(r => {
+      if (!m[r.advertiser]) m[r.advertiser] = { ytd: 0, days: {}, recent: 0 }
+      m[r.advertiser].ytd += Number(r.revenue)
+      m[r.advertiser].days[r.date] = (m[r.advertiser].days[r.date]||0) + Number(r.revenue)
+    })
+    // recent = last 7 days avg
+    const allDates = [...new Set(revenue.map(r=>r.date))].sort()
+    const last7 = new Set(allDates.slice(-7))
+    Object.keys(m).forEach(adv => {
+      const last7rev = Object.entries(m[adv].days).filter(([d])=>last7.has(d)).reduce((s,[,v])=>s+v,0)
+      m[adv].recent = last7rev / 7
+    })
+    return m
+  }, [revenue])
+
+  const dailyTotals = useMemo(() => {
+    const m = {}
+    revenue.forEach(r => { m[r.date] = (m[r.date]||0) + Number(r.revenue) })
+    return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0]))
+  }, [revenue])
+
+  const totalYTD   = useMemo(() => revenue.reduce((s,r)=>s+Number(r.revenue),0), [revenue])
+  const last7Avg   = useMemo(() => {
+    const allDates = [...new Set(revenue.map(r=>r.date))].sort()
+    const last7    = new Set(allDates.slice(-7))
+    const sum = revenue.filter(r=>last7.has(r.date)).reduce((s,r)=>s+Number(r.revenue),0)
+    return sum / 7
+  }, [revenue])
+
+  const advertisers = useMemo(() => {
+    let list = Object.entries(ytdByAdv).map(([name,d])=>({name,...d}))
+    if (filter.trim()) {
+      const q = filter.toLowerCase()
+      list = list.filter(a=>a.name.toLowerCase().includes(q))
+    }
+    if (sort==='ytd')    list.sort((a,b)=>b.ytd-a.ytd)
+    if (sort==='name')   list.sort((a,b)=>a.name.localeCompare(b.name))
+    if (sort==='recent') list.sort((a,b)=>b.recent-a.recent)
+    return list
+  }, [ytdByAdv, filter, sort])
+
+  const topYTD = advertisers.length > 0 ? advertisers[0].ytd : 1
+
+  // Mini sparkline: last 30 days for a given advertiser
+  const Sparkline = ({ adv }) => {
+    const allDates = [...new Set(revenue.map(r=>r.date))].sort().slice(-30)
+    const vals = allDates.map(d => ytdByAdv[adv]?.days[d] || 0)
+    const max = Math.max(...vals, 1)
+    const w = 80, h = 24
+    const pts = vals.map((v,i)=>`${(i/(vals.length-1))*w},${h-(v/max)*h}`).join(' ')
+    return (
+      <svg width={w} height={h} style={{display:'block'}}>
+        <polyline points={pts} fill="none" stroke="#10B981" strokeWidth="1.5" strokeLinejoin="round"/>
+      </svg>
+    )
+  }
+
+  // Daily chart: last 60 days bar chart
+  const DailyChart = () => {
+    const days = dailyTotals.slice(-60)
+    const max = Math.max(...days.map(([,v])=>v), 1)
+    const w = 100, barW = Math.max(2, Math.floor(w/days.length)-1)
+    return (
+      <div style={{overflowX:'auto',paddingBottom:4}}>
+        <svg width={Math.max(600, days.length * (barW+1))} height={80} style={{display:'block'}}>
+          {days.map(([date,val],i)=>{
+            const bh = Math.max(1, (val/max)*72)
+            const x = i*(barW+1)
+            return <rect key={date} x={x} y={80-bh-4} width={barW} height={bh}
+              fill={i===days.length-1?'#6366F1':'#D1FAE5'} rx="1"
+              title={`${date}: ${money(val)}`}/>
+          })}
+        </svg>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'#aaa',marginTop:2,paddingRight:4}}>
+          <span>{days[0]?.[0]}</span>
+          <span>{days[days.length-1]?.[0]}</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) return <div style={{height:200,display:'flex',alignItems:'center',justifyContent:'center',gap:10,color:'#888'}}><div className="spin"/>Loading revenue…</div>
+  if (revenue.length===0) return <div style={{height:200,display:'flex',alignItems:'center',justifyContent:'center',color:'#aaa',fontSize:13}}>No revenue data yet.</div>
+
+  const lastDate = dailyTotals.length > 0 ? dailyTotals[dailyTotals.length-1][0] : '—'
+  const lastDayRev = dailyTotals.length > 0 ? dailyTotals[dailyTotals.length-1][1] : 0
+
+  return (
+    <div>
+      {/* Summary metrics */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:16}}>
+        {[
+          {label:'YTD Revenue',      val:money(totalYTD)},
+          {label:'7-day avg / day',  val:money(last7Avg)},
+          {label:`Last day (${lastDate})`, val:money(lastDayRev), accent:true},
+        ].map(({label,val,accent})=>(
+          <div key={label} style={{background:'#EDEBE6',borderRadius:8,padding:'10px 14px'}}>
+            <div style={{fontSize:10,color:'#888',marginBottom:3,textTransform:'uppercase',letterSpacing:'0.06em'}}>{label}</div>
+            <div style={{fontSize:20,fontWeight:500,fontFamily:"'DM Mono',monospace",color:accent?'#6366F1':'#1A1A1A'}}>{val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Daily revenue chart */}
+      <div style={{border:'1px solid #E2DED5',borderRadius:10,background:'#fff',padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:500,marginBottom:10,color:'#555'}}>Daily revenue — last 60 days</div>
+        <DailyChart/>
+      </div>
+
+      {/* Advertiser table */}
+      <div style={{display:'flex',gap:7,marginBottom:10,alignItems:'center',flexWrap:'wrap'}}>
+        <input className="inp" placeholder="Search advertiser…" value={filter} onChange={e=>setFilter(e.target.value)} style={{width:200}}/>
+        <select className="inp" value={sort} onChange={e=>setSort(e.target.value)} style={{width:160}}>
+          <option value="ytd">Sort: YTD revenue</option>
+          <option value="recent">Sort: 7-day avg</option>
+          <option value="name">Sort: A–Z</option>
+        </select>
+        <div style={{marginLeft:'auto',fontSize:11,color:'#888'}}>{advertisers.length} advertisers</div>
+      </div>
+
+      <div style={{border:'1px solid #E2DED5',borderRadius:10,overflow:'hidden',background:'#fff'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
+          <thead>
+            <tr style={{background:'#F3F1EC',fontSize:10,color:'#888',textTransform:'uppercase',letterSpacing:'0.07em'}}>
+              <th style={{padding:'9px 14px',textAlign:'left',width:'28%',fontWeight:500}}>Advertiser</th>
+              <th style={{padding:'9px 14px',textAlign:'left',width:'28%',fontWeight:500}}>YTD pacing</th>
+              <th style={{padding:'9px 14px',textAlign:'right',width:'16%',fontWeight:500}}>YTD total</th>
+              <th style={{padding:'9px 14px',textAlign:'right',width:'14%',fontWeight:500}}>7d avg/day</th>
+              <th style={{padding:'9px 14px',textAlign:'right',width:'14%',fontWeight:500}}>Last 30d trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            {advertisers.map((adv,i)=>{
+              const pct = Math.min(100, Math.round((adv.ytd/topYTD)*100))
+              return (
+                <tr key={adv.name} style={{borderTop:i>0?'1px solid #F0EDE6':'none'}}>
+                  <td style={{padding:'10px 14px',fontSize:12,fontWeight:500}}>{adv.name}</td>
+                  <td style={{padding:'10px 14px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <div style={{flex:1,height:6,background:'#F1F5F9',borderRadius:3,overflow:'hidden'}}>
+                        <div style={{width:`${pct}%`,height:'100%',background:'#10B981',borderRadius:3}}/>
+                      </div>
+                      <span style={{fontSize:10,color:'#888',minWidth:28,textAlign:'right'}}>{pct}%</span>
+                    </div>
+                  </td>
+                  <td style={{padding:'10px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:500}}>{money(adv.ytd)}</td>
+                  <td style={{padding:'10px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:11,color:'#555'}}>{fmt2(adv.recent)}</td>
+                  <td style={{padding:'10px 14px',display:'flex',justifyContent:'flex-end'}}><Sparkline adv={adv.name}/></td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   )
